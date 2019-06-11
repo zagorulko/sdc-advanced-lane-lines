@@ -6,15 +6,24 @@ boundaries in videos.
 
 ![alt text](./cover.jpg)
 
-[//]: # (Image References)
+## Usage
 
-[image1]: ./examples/undistort_output.png "Undistorted"
-[image2]: ./test_images/test1.jpg "Road Transformed"
-[image3]: ./examples/binary_combo_example.jpg "Binary Example"
-[image4]: ./examples/warped_straight_lines.jpg "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
-[video1]: ./project_video.mp4 "Video"
+To calibrate camera with chessboard pattern _(note, this repository already
+includes [camera calibration data](./camera.json) for test videos)_:
+
+`./camera_cal.py -i camera_cal -x 9 -y 6 camera.json`
+
+To test camera calibration:
+
+`./camera_test.py camera_cal/calibration2.jpg`
+
+To detect lines on test images:
+
+`./find_lane_lines.py test_images -o output_images`
+
+To detect lines on project video:
+
+`./find_lane_lines.py test_videos/project_video.mp4 -o output_videos/project_video.mp4`
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
