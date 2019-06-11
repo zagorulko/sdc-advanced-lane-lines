@@ -60,7 +60,7 @@ function.  I applied this distortion correction to a test image using the
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
 The code for this step is contained in the method `_select_pixels()` of
-`LaneFinder` class at [find_lane_lines.py](./find_lane_lines.py#L382).
+`LaneFinder` class at [find_lane_lines.py](./find_lane_lines.py#L386).
 
 First, I passed the input image through a bilateral filter intending to reduce
 noise while keeping edges reasonably sharp. Then, I extracted individual channels
@@ -147,7 +147,7 @@ An example of perspective-transformed mask:
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
 See `find_lane_pixels()`, `search_around_poly()` and `Line.fit()` at
-[find_lane_lines.py](./find_lane_lines#L91).
+[find_lane_lines.py](./find_lane_lines.py#L92).
 
 `find_lane_pixels()` finds lane pixels on a mask using sliding window starting,
 by default, from histogram peaks. Here is how my implementation differs
@@ -176,11 +176,11 @@ Here's a visualization of my sliding window search:
 
 The distance from vehicle center to a single line and its radius of curvature
 in meters are recalculated upon every update of polynomial coefficients in
-`Line._update_best()` at [find_lane_lines.py](./find_lane_lines.py#L276).
+`Line._update_best()` at [find_lane_lines.py](./find_lane_lines.py#L277).
 
 Vehicle offset from the lane center is calculated as the difference of each
 line's distances in `LaneFinder._process_job()` at
-[find_lane_lines.py](./find_lane_lines.py#529).
+[find_lane_lines.py](./find_lane_lines.py#L535).
 
 To translate pixel distances to real-world distances, I defined
 meters per pixel ratios for _x_ and _y_ dimensions of bird's eye image:
