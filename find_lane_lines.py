@@ -7,6 +7,7 @@ import queue
 import threading
 import time
 from collections import defaultdict
+from copy import deepcopy
 
 import cv2
 import numpy as np
@@ -101,7 +102,7 @@ def find_lane_pixels(mask_warped, left_x_base=None, right_x_base=None):
     minpix = 60
     # Search will stop if window gets this far from mask's horizontal border
     border = -10
-    # Multiplier of direction calculated from average of x coordinates
+    # Amplifier of direction calculated from average of x coordinates
     dir_gain = 2.0
     # Maximum number of consecutive empty windows before the search is stopped
     max_emptiness = 9
@@ -359,23 +360,26 @@ def lines_are_valid(left_line, right_line):
 class LaneFinder:
     """Supposed to locate lane lines on sequences of images."""
 
-    def __init__(self, camera, report=None, trace=False, is_curvy=False):
+    def __init__(self, camera, report=None, trace=False, is_curvy=False,
+                 show_bad_lines=False):
         self.camera = camera
         self.report = report
         self.trace = trace
         self.is_curvy = is_curvy
+        self.show_bad_lines = show_bad_lines
         line_kwargs = {}
         if is_curvy:
-            # line_kwargs['new_fit_weight'] = 1.5
-            # line_kwargs['window'] = 9
-            # line_kwargs['max_errors'] = 5
-            # line_kwargs['max_base_reuse'] = 11
             line_kwargs['new_fit_weight'] = 0.5
             line_kwargs['window'] = 7
             line_kwargs['max_errors'] = 4
             line_kwargs['max_base_reuse'] = 10
         self.left_line = Line(camera, **line_kwargs)
         self.right_line = Line(camera, **line_kwargs)
+        if not show_bad_lines:
+            # These lines do not take part in any calculations. They are copies
+            # of the latest good pair of lines for visualization purposes.
+            self.good_left_line = deepcopy(self.left_line)
+            self.good_right_line = deepcopy(self.right_line)
         self.R_curve = 0
         self.v_offset = 0
 
@@ -399,7 +403,7 @@ class LaneFinder:
         lab_l, lab_a, lab_b = cv2.split(lab)
         lab_b_eq = cv2.equalizeHist(lab_b)
 
-        # Calculate histogram of L channel
+        # Calculate histogram of HLS-L channel
         hist_gray = L
         hist_gray = hist_gray[hist_gray.shape[0]//3*2:]
         hist_sm = cv2.calcHist([hist_gray], [0], None, [5], [0, 256])
@@ -464,6 +468,9 @@ class LaneFinder:
         if lines_are_valid(self.left_line, self.right_line):
             self.left_line.commit()
             self.right_line.commit()
+            if not self.show_bad_lines:
+                self.good_left_line = deepcopy(self.left_line)
+                self.good_right_line = deepcopy(self.right_line)
             return True
 
         left_diffs = abs(self.left_line.diffs[0] * self.left_line.diffs[1])
@@ -559,19 +566,28 @@ class LaneFinder:
         if self.report:
             self.report('lane_pixels', lane_img)
 
+        if (self.show_bad_lines
+                or (self.good_left_line.empty())
+                or (not self.left_line.empty() and self.right_line.empty())):
+            left_line = self.left_line
+            right_line = self.right_line
+        else:
+            left_line = self.good_left_line
+            right_line = self.good_right_line
+
         # Draw area
         area_img = np.dstack((np.zeros_like(mask_warped, np.uint8),) * 3)
         polygon_pts = []
-        if not self.left_line.empty():
-            polygon_pts += [[np.vstack([self.left_line.best_x, plot_y]).T]]
-        if not self.right_line.empty():
-            polygon_pts += [[np.flipud(np.vstack([self.right_line.best_x, plot_y]).T)]]
-        if self.right_line.empty():
+        if not left_line.empty():
+            polygon_pts += [[np.vstack([left_line.best_x, plot_y]).T]]
+        if not right_line.empty():
+            polygon_pts += [[np.flipud(np.vstack([right_line.best_x, plot_y]).T)]]
+        if right_line.empty():
             polygon_pts += [[np.array([[area_img.shape[1], area_img.shape[0]]])]]
-        if self.left_line.empty():
+        if left_line.empty():
             polygon_pts += [[np.array([[0, 0]])]]
         polygon_pts = np.hstack(polygon_pts)
-        if not lines_are_valid(self.left_line, self.right_line):
+        if self.show_bad_lines and not lines_are_valid(left_line, right_line):
             area_color = (0, 0, 255)
         else:
             area_color = (0, 255, 0)
@@ -581,8 +597,8 @@ class LaneFinder:
 
         # Draw text
         text = [
-            'Radius of curvature (L): {:.2f} m'.format(self.left_line.R_curve),
-            'Radius of curvature (R): {:.2f} m'.format(self.right_line.R_curve),
+            'Radius of curvature (L): {:.2f} m'.format(left_line.R_curve),
+            'Radius of curvature (R): {:.2f} m'.format(right_line.R_curve),
             'Vehicle is {:.2f} m {} of center'.format(abs(self.v_offset),
                 'left' if self.v_offset <= 0 else 'right'),
         ]
